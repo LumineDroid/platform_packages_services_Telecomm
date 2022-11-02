@@ -29,7 +29,6 @@ import android.app.Person;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.res.Resources;
-import android.database.ContentObserver;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.Ringtone;
@@ -236,9 +235,6 @@ public class Ringer {
         0,
     };
 
-    private SettingsObserver mSettingObserver;
-    private final Handler mH = new Handler();
-
     private static final long[] CALL_CONNECTED_VIBRATION_PATTERN = {
             0, // No delay before starting
             1000, // How long to vibrate
@@ -391,14 +387,6 @@ public class Ringer {
                 com.android.internal.R.bool.config_ringtoneVibrationSettingsSupported);
         mCallConnectedIndicatorSettings = callConnectedIndicator;
         mAsyncTaskExecutor = asyncTaskExecutor;
-
-        mSettingObserver = new SettingsObserver(mH);
-        mContext.getContentResolver().registerContentObserver(
-            Settings.System.getUriFor(Settings.System.RINGTONE_VIBRATION_PATTERN),
-            true, mSettingObserver, UserHandle.USER_CURRENT);
-        mContext.getContentResolver().registerContentObserver(
-            Settings.System.getUriFor(Settings.System.CUSTOM_RINGTONE_VIBRATION_PATTERN),
-            true, mSettingObserver, UserHandle.USER_CURRENT);
     }
 
     public void shutdownExecutor() {
@@ -667,6 +655,7 @@ public class Ringer {
                         return;
                     }
                     final VibrationEffect vibrationEffect;
+                    updateVibrationPattern();
                     if (ringtone != null && finalUseCustomVibrationEffect) {
                         if (DEBUG_RINGER) {
                             Log.d(this, "Using ringtone defined vibration effect.");
@@ -1243,18 +1232,6 @@ public class Ringer {
                     PULSE_AMPLITUDE, REPEAT_VIBRATION_AT);
         }
     }
-
-    private final class SettingsObserver extends ContentObserver {
-        public SettingsObserver(Handler handler) {
-            super(handler);
-        }
-
-        @Override
-        public void onChange(boolean SelfChange) {
-            updateVibrationPattern();
-        }
-    }
-
 
     public void startVibratingForOutgoingCallActive() {
         if (!mFlags.callConnectedIndicatorPreference()) {
